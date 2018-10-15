@@ -80,6 +80,16 @@ Tensor& Resize(const DDim& dims);
         return 0;
     }
     ```
+
+    我们可以声明一个 `Dim` 对象并使用 `indexer` 来获取某一个维度是值：
+
+    ``` c++
+    int main(int argc, char** argv) {
+        Dim<3> d(1,2,3);
+        std::cout << indexer<3>(d, 2) << std::endl;
+    }
+    ```
+
 ### Place
 
 TBD
