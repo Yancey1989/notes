@@ -15,12 +15,12 @@
 
 1. 表示维度的结构: `DDim`
 
-Tensor 中提供了维度相关的接口：
+    Tensor 中提供了维度相关的接口：
 
-``` c++
-const DDim& dims() const;
-Tensor& Resize(const DDim& dims);
-```
+    ``` c++
+    const DDim& dims() const;
+    Tensor& Resize(const DDim& dims);
+    ```
 
     1. `DDim` 用来表示一个维度集合，它可以用 `auto my_dims = make_ddim({1,2,3,4})` 的方式进行初始化，也可以使用重载过的运算符`[]` 来获取某个 index 的维度： `EXPECT_EQ(my_dims[0] == 1)`.
 
