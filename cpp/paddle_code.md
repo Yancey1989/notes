@@ -1,13 +1,10 @@
 # PaddlePaddle 部分源码学习笔记
 
-人们通常通过叠加 Layer 的方式来描述一个模型，在 PaddlePaddle 中一个 Layer 由 多个 Operator 和与其相关的 Variable 组成，当用户通过 Layer 的 API 组成一个网络结构之后，会通过顺序执行引擎 `Executor` 或者带有依赖
-分析的并行执行引擎 `ParallelExecutor` 来执行这些 Operators.
-
 ## Tensor
 
 ### 什么是 Tensor ?
 
-在神经网络中，我们可以用一个“向量”来描述和定义一个参数，例如 data layer 是一个第0维为 `batch_size` 的向量，在 PaddlePaddle 中使用 `Tensor` 结构来描述和定义一个向量，它有以下的特性：
+在神经网络中，我们可以用一个“向量”来描述和定义一个参数，例如 data layer 是一个第0维为 `batch_size` 的向量，在 PaddlePaddle 中使用 `Tensor` 结构来描述和定义一个向量：
 
 1. `DDim`: 维度信息，用来表示向量的维度。
 1. `Place`: 一个深度学习框架应该可以运行在多种设备中，至少是 CPU 和 GPU 设备，所以 Tensor 需要提供统一的接口使得计算逻辑不需要为不同的设备编写独立的代码。
