@@ -87,6 +87,41 @@ Tensor& Resize(const DDim& dims);
     }
     ```
 
-### Place
+### 指向数据的指针 `std::shared_ptr<Placeholder> holder_`
 
-TBD
+在 PaddlePaddle 的 Tensor实现中，并不保存数据, 而只含有对 Tensor 的基本操作,
+对数据的访问是通过对 `PlaceHolder` 的指针来操作的，对于 Tensor 的数据而言，我们需要知道：
+
+1. 数据在哪里？CPU 还是 GPU？
+1. 数据的类型是什么？int, float16 还是 float32？
+
+为此 `Placeholder` 中有两个重要的成员: 表示所在设备的 `platform::Place place_` 以及 数据类型 `std::type_index type_`:
+
+``` c++
+struct Placeholder {
+  virtual ~Placeholder() = default;
+  virtual void* ptr() const = 0;
+  virtual size_t size() const = 0;
+  virtual std::type_index type() const = 0;
+  virtual platform::Place place() const = 0;
+  virtual void set_type(std::type_index type) = 0;
+  virtual void set_place(platform::Place place) = 0;
+};
+
+template <typename Place>
+struct PlaceholderImpl : public Placeholder {
+  PlaceholderImpl(Place place, size_t size, std::type_index type)
+      : ptr_(static_cast<uint8_t*>(memory::Alloc(place, size)),
+            memory::PODDeleter<uint8_t, Place>(place)),
+        place_(place),
+        size_(size),
+        type_(type) { ... }
+  ...
+
+  std::unique_ptr<uint8_t, memory::PODDeleter<uint8_t, Place>> ptr_;
+}
+```
+
+1. `Placeholder` 是一个纯虚基类，定义了一些基本的操作, `PlaceholderImpl` 实现了 `Placeholder` 接口。
+1. `memory::Alloc(place, size)` 和 `memory::PODDeleter<uint8_t, Place>(place)` 是 PaddlePaddle
+    中实现的内存管理器，`Alloc(place,size)` 和 `PODDelete<uint8_t, Place>(place)` 分别负责申请和释放内存。
