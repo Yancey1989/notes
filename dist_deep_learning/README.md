@@ -20,13 +20,13 @@
 作业编写不同的 "Master" 进程，例如 MapReduce 作业需要根据 Yarn 提供的一套 API 来实现管理 Map 和 Reduce 进程的
 中心节点，属于专用机群和通用机群的中间状态。
 
-Kubernetes 是 Google Borg 的开源版本，它可使用户可以像管理操作系统中的进程一样调度机群中的进程，例如一个
+Kubernetes 是 Google Borg 的开源实现，它可使用户可以像管理操作系统中的进程一样调度机群中的进程，例如一个
 Kubernetes 机群中有很多的计算节点 (Node), 每个节点上可以运行很多的进程（Pod），用户可以通过描述一个 Kubernetes
 RecplicaSet 来告诉 Kubernetes 机群，该启动多少个进程（Pod），并且即使有节点失效，机群也可以自动的将进程在其他正常
 的节点上将进程启动起来。
 Kubernetes 还提供很多的 Object，来管理计算作业类进程(Kubernetes Job), 监控类进程(Kuberentes Daemon)等等。
 
-## 弹性深度学习系统 [Elastic Deep Learning System (EDL)](https://github.com/PaddlePaddle/edl)
+## 弹性深度学习系统 Elastic Deep Learning
 
 传统的 AI 计算机群如 MPI、Slurm 等，用户在提交任务时会指定一个固定的计算资源，当机群中没有足够的计算资源时，所
 提交的作业将会一直等待，直到集群中有足够多的计算资源才会将作业调度起来。
@@ -37,6 +37,9 @@ Kubernetes 还提供很多的 Object，来管理计算作业类进程(Kubernetes
 
 - 用户体验差，并且无法快速的验证任务是否正确：用户提交任务后，需要等待一个很不确定的时间后才可以被调度起来；
 - 集群资源利用率低：例子中的集群利用率只有 50%， 无法高效的利用率集群资源。
+
+而[Elastic Deep Learning(EDL)](http://github.com/PaddlePaddle/edl) 则允许用户在提交任务时指定一个资源范围，
+例如 1 ~ 10 个计算节点，此时任务将会以 5 个训练进程被立即调度起来。
 
 ### Kubernetes TrainingJob Controller
 
@@ -96,6 +99,8 @@ All-Reduce 的方式将参数同步更新, 因为每个 trainer 进程负责训�
 
 parameter server 是一种比较通用的分布式训练架构，它的主要做法是将训练作业中的进程分为两种角色：parameter server 和 trainer
 
+TODO: parameter server 图示
+
 - trainer 负责计算所有参数的梯度，并且将参数的梯度发送到 parameter server 上进行更新，最后用 parameter server 更新后的
     参数替换本地的参数以备下一轮迭代使用。
 - parameter server 进程中分布式地存储需要更新的参数，并且在满足一定条件时对参数进行更新，这里的特定条件是指定：
@@ -106,6 +111,8 @@ parameter server 是一种比较通用的分布式训练架构，它的主要做
     trainer 完成上传后再执行更新操作，这需要在实际模型中验证不同异步模式带来的影响。
 
 ### Ring-base 架构
+
+TODO: ring-base 图示
 
 在 Ring-base 架构中没有额外存储参数的 parameter server 进程，而是使用 Nvidia NCCL2 communication library
 来对 gradient 进行 All-Reduce 操作，因为没有独立的 parameter server 进程来管理参数，所以训练过程中占用的带宽
@@ -120,6 +127,8 @@ parameter server 是一种比较通用的分布式训练架构，它的主要做
 GDR | 支持 | 不支持
 
 ## 高性能并行训练技术
+
+TBD
 
 ### Remote Directed Memory Access (RDMA)
 
