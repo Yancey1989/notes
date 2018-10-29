@@ -1,57 +1,73 @@
-# 大规模分布式深度学习训练
+# 大规模分布式深度学习系统
 
 ## 背景
 
-随着大数据以及 AI 技术的发展，AI 业务中需要处理处理的数据越来越庞大，并且随着 Deep Learning 算法的演进，需要的计算能力也越来越高，这需要企业拥有一套完整的 AI 计算平台并且能够大规模的调度训练进程，为了支持多种 AI 芯片(CPU, GPU 以及 ARM 等)
-以及对应的不同计算库(Nvidia CUDA, Intel MKLDNN 以及 cuBlas 等)，训练框架除了需要能够支持大规模的训练以外还要能够兼容不同的计算设备。
+信息信息技术的发展，人类可以采集到的数据越来越繁杂和精细，在人工智能公司的 AI 系统中需要处理的数据也越来越庞大，并且随
+着 AI 算法的不断演进，模型正变得越来越复杂，所需的计算能力也越来越高。这需要企业拥有一套功能强大的 AI 平台能够:
+1. 调度不同作业，按优先级由高到低可以分为：实时作业、离线作业以及实验作业。
+1. 对于深度学习类作业，不同的模型，需要的硬件也不一样，例如一些 CTR 类的模型由于模型比较简单但是需要处理的数据非常庞大
+    ，所以需要 大量的 CPU 来完成训练，图像类模型则需要大量 GPU 芯片来完成训练等等。为了支持多种 AI 计算芯片（CPU, 
+    GPU 以及 ARM等）以及不同的计算库（Nvidia CUDA，Intel MKLDNN 以及 cuBlas 等），训练框架需要能够在异构的集群完
+    成大规模的训练任务。
 
 ## 通用计算机群 Kubernetes
 
-为了能够将分布式的作业调度起来，我们首先需要一个机群并且有一套软件能够很好的将机群资源管理起来，传统的计算机群如 MPI、Slurm、Hadoop
-等属于专用机群，如果我们希望在上面调度起来一个应用，我们需要根据机群管理软件提供的 API 来实现我们的调度逻辑，例如 MapReduce 作业
-就有一个 Master 的进程，通过调用 Hadoop Yarn 提供的 API 将 Map 和 Reduce 的进程调度起来。
+为了能够将不同类型的作业调度起来，我们首先需要有一个分布式的计算机群，为了管理一个大规模的计算机群，我们也需要有一套
+软件能够将机群管理起来，传统的机群管理软件如 MPI、Slurm、Hadoop、Kafka 等属于专用集群，他们的特点是只能管理一类
+进程，不同的集群之间不可以共享计算资源。
 
-与专用机群相对应的是通用计算机群，Kubernetes 是 Google Borg 的开源版本，它可以使用户可以像管理操作系统中的进程一样管理集群中的
-进程，例如 Kubernetes 提供的 ReplicaSet 对象，用户可以通过一个 YAML 文件来描述一个 ReplicaSet 对象，在其中指定需要运行的
-Docker Image 以及副本数，通过 `kubectl` 命令行工具将 YAML 文件提交到 Kubernetes 集群，集群则会随机的在节点上启动对应数量的
-“进程”（Kubernetes Pod），并且提供 Fault-tolerant 机制，一旦发现某些进程意外退出了，则会在其他节点上将进程重启，维持 `replicas` 个副本。
+还有一些集群管理软件，理论上可以调度不同的计算作业，例如 Hadoop Yarn，Mesos 等，但这些软件的弊端是需要为不同类型的
+作业编写不同的 "Master" 进程，例如 MapReduce 作业需要根据 Yarn 提供的一套 API 来实现管理 Map 和 Reduce 进程的
+中心节点，属于专用机群和通用机群的中间状态。
 
-## 弹性深度学习系统 Elastic Deep Learning System (EDL)
+Kubernetes 是 Google Borg 的开源版本，它可使用户可以像管理操作系统中的进程一样调度机群中的进程，例如一个
+Kubernetes 机群中有很多的计算节点 (Node), 每个节点上可以运行很多的进程（Pod），用户可以通过描述一个 Kubernetes
+RecplicaSet 来告诉 Kubernetes 机群，该启动多少个进程（Pod），并且即使有节点失效，机群也可以自动的将进程在其他正常
+的节点上将进程启动起来。
+Kubernetes 还提供很多的 Object，来管理计算作业类进程(Kubernetes Job), 监控类进程(Kuberentes Daemon)等等。
 
-传统 AI 计算机群如 MPI，用户提交训练任务时需要指定一个所需的计算资源，当机群中没有足够的资源时，所提交的作业将会一直等待，一直
-到集群中有足够多的计算资源。举例来说，假设我们拥有一个 10 个计算节点的 GPU 集群，其中 5 个节点正在被占用，这时用户向集群
-中提交一个训练任务， 并且指定需要的计算资源为6个节点，这时用户的任务由于没有足够的资源将无法被立即调度起来，
-需要等待其余 5 个节点的作业退出后才能运行。这会产生两个问题：
+## 弹性深度学习系统 [Elastic Deep Learning System (EDL)](https://github.com/PaddlePaddle/edl)
+
+传统的 AI 计算机群如 MPI、Slurm 等，用户在提交任务时会指定一个固定的计算资源，当机群中没有足够的计算资源时，所
+提交的作业将会一直等待，直到集群中有足够多的计算资源才会将作业调度起来。
+
+举例来说，假设我们拥有一个 10 个计算节点的 GPU 集群，其中 5 个节点正在被占用，这时用户向集群
+中提交一个需要 6 个计算节点的任务，这时任务由于没有足够的资源将无法被立即调度起来，需要等待其余 5 个节点的作业退出
+后才能运行。这会产生两个问题：
 
 - 用户体验差，并且无法快速的验证任务是否正确：用户提交任务后，需要等待一个很不确定的时间后才可以被调度起来；
 - 集群资源利用率低：例子中的集群利用率只有 50%， 无法高效的利用率集群资源。
 
 ### Kubernetes TrainingJob Controller
 
-EDL 实现了一个自定义的 Kubernetes Controller (TrainingJob Controller) 组件，使得用户可以使用一个 YAML 文件来描述
-TrainingJob 的 属性，包括但不限于作业中 trainer 进程，parameter Server进程以及 master 进程
-所需要的资源 (spec.resources)、指定 Runtime Docker image (spec.image) 等。用户通过命令行工具 `kubectl` 将
-TrainingJob 的 YAML 文件提交到 Kubernetes 集群，TrainingJob Controller 将会将用户的配置解析成 Kubernetes 
-原生的对象，例如使用 Job 启动 trainer 进程，使用 ReplicSet 启动 parameter Server 进程。
+EDL 中实现了一个自定义的 Kubernetes Controller (TrainingJob Controller)，这样用户就可以通过一个 YAML 文件来
+描述一个 TrainingJob，在这个 YAML 文件中用户可以指定训练作业需要的进程数，每个进程的资源等，
+TrainingJob Controller 则会根据这些配置在 Kubernetes 集群中将 trainer 进程，parameter server 进程以及
+master 进程 (fault-tolerant 模式) 启动起来，并开始训练。
 
-### Auto-scaller Component
+### Auto-scaller
 
-为了根据集群中不同的进程的优先级调整每个训练作业中训练进程的数量，在 Training Job Controller 启动了一个
+Auto-scaller 模块可以根据集群中不同进程的优先级来增加或者减少每个 TrainingJob 中 trainer 进程的数量。web服务类
+的实时作业通常拥有最高的优先级，在用户访问的高峰时段，通常需要增加 web 服务的进程数量来处理大量用户请求，这时 
+auto-scaller 将会主动减少训练任务的进程来给予 web 服务更多的计算资源。
 
 ### PaddlePaddle Fault-tolerant Architecture
 
-目前开源的深度学习框架中，还没有能够实现可容错的训练(fault-tolernat training), 当集群中一个训练节点失败后整个任务也将会失败，
-为了使训练作业能够自由的增加/减少进程数量，我们在 PaddlePaddle 分布式训练框架中实现了一种新的 fault-tolerant 架构. 在
-fault-tolernat 训练架构中我们引入了 master 进程，把训练进程转换成多个 RecordIO 格式的 Block 进行管理。
-为了保存训练数据的处理情况，我们使用三个Queue 来管理这些Block:
+在目前开源的深度学习框架中，分布式训练作业中一个进程的以外退出将会导致整个训练任务的失败，为了在 auto-scaller 
+增加/减少训练进程数量时任务不会失败，我们在 PaddlePaddle 分布式训练框架中实现了 fault-tolerant 机制，在这种
+机制里，我们引入了一个独立的 master 进程来管理每个 trainer 节点所负责训练数据的偏移，每个作业的训练数据被转换成
+RecordIO 格式并存储为多个 Block，master 进程使用 3 个 Queue 来管理这些 Block：
 
-<img src="images/fault-tolerant-queue.png" weight="500" />
+<img src="images/fault-tolerant-queue.png" width="600" />
 
 1. 在每个 epoch 开始时将所有的 blocks 放在 TODO Queue 中
-1. trainer 进程开始训练前会向 master 进程请求一个 block 数据开始训练，master 会将这个 block 放入到 PENDING Queue 中。
-1. 在 DONE Queue 中保存已经训练完毕的 block，并且当全部的 block 被移动到 DONE Queue 时意味着当前 epoch 结束，master 重新
+1. trainer 进程开始训练前会向 master 进程请求一个 block 数据开始训练，master 会将这个 block 放入到 PENDING 
+Queue 中。
+1. 在 DONE Queue 中保存已经训练完毕的 block，并且当全部的 block 被移动到 DONE Queue 时意味着当前 epoch 结束，
+master 重新
 将 DONE Queue 中的 block 移动到 TODO Queue 中准备进行下一轮训练。
-1. 特别的为了处理某个 trainer 在训练过程中失败，我们在 Pending Queue 中的 block 设定了一个 timeout threshold, 一旦有某个 block 超过了这个 threshold 就会被移动到 TODO queue 被重新训练。
+1. 特别的为了处理某个 trainer 在训练过程中失败，我们在 Pending Queue 中的 block 设定了一个 timeout threshold, 
+一旦有某个 block 超过了这个 threshold 就会被移动到 TODO queue 被重新训练。
 
 ## 并行训练框架
 
@@ -66,17 +82,17 @@ fault-tolernat 训练架构中我们引入了 master 进程，把训练进程转
 
 ### 数据并行 VS. 模型并行
 
-TODO: 图示
+<img src="images/parallelism.png" />
 
 并行训练主要分为两种模式：模型并行以及数据并行。
 
-- 所谓模型并行就是将一个模型中的 Layers 分布在多个计算设备/节点上进行训练，因为每个设备/节点是负责计算模型中的一个或多个
+1. 模型并行是将一个模型中的 Layers 分布在多个计算设备/节点上进行训练，因为每个设备/节点是负责计算模型中的一个或多个
 Layers，所以并行并行的模式可以训练超大参数的模型；
-- 而所谓数据并行是每个 trainer 进程保存有相同的模型副本，每个训练节点负责计算一部分训练数据，通过 parameter server 或者
-All-Reduce 的方式将参数同步更新, 因为每个 trainer 进程负责训练一部分数据，所以数据并行的模式可以训练超大规模训练数据的模型
-训练任务。
+1. 数据并行是每个 trainer 进程保存有相同的模型副本，每个训练节点负责计算一部分训练数据，通过 parameter server 或者
+All-Reduce 的方式将参数同步更新, 因为每个 trainer 进程负责训练一部分数据，所以数据并行的模式可以训练超大规模训练数据
+的模型训练任务。
 
-### 基于 RPC 的 Parameter Server 分布式训练架构
+### Parameter Server 架构
 
 parameter server 是一种比较通用的分布式训练架构，它的主要做法是将训练作业中的进程分为两种角色：parameter server 和 trainer
 
@@ -84,24 +100,23 @@ parameter server 是一种比较通用的分布式训练架构，它的主要做
     参数替换本地的参数以备下一轮迭代使用。
 - parameter server 进程中分布式地存储需要更新的参数，并且在满足一定条件时对参数进行更新，这里的特定条件是指定：
     - 同步更新：parameter server 会等所有 trainer 将梯度全部上传后进行更新，更新后所有 trainer 进程拿到的参数都是一样的。
-    - 异步更新：parameter server 会在有梯度上传后就执行参数更新操作，一个 trainer 进程上传梯度后可以立即拿到更新的参数而无需
-    等待其他 trainer 进程上传完梯度。相比同步更新，异步更新会带来更多的不可预见性，但却可以规避大规模训练中慢节点带来的影响。
-    实际实现时，异步更新的策略也有所不同，一种折中的方案是 parameter server 上等待一定比例的 trainer 完成上传后再执行更新
-    操作，这需要在实际模型中验证不同异步模式带来的影响。
+    - 异步更新：parameter server 会在有梯度上传后就执行参数更新操作，一个 trainer 进程上传梯度后可以立即拿到更新的
+    参数而无需等待其他 trainer 进程上传完梯度。相比同步更新，异步更新会带来更多的不可预见性，但却可以规避大规模训练中
+    慢节点带来的影响。实际实现时，异步更新的策略也有所不同，一种折中的方案是 parameter server 上等待一定比例的
+    trainer 完成上传后再执行更新操作，这需要在实际模型中验证不同异步模式带来的影响。
 
-### 基于 Collective API 的 Ring-base All-Reduce 架构
+### Ring-base 架构
 
-在 Ring-base All-Reduce 架构中没有额外存储参数的 parameter server 进程，而是使用 Nvidia NCCL2 All-Reduce
-来聚合参数。因为没有独立的 parameter server 进程，所以训练过程中需要传输的数据相对要少，性能更好，缺点是灵活性不足，无法在
-Parameter Server 上实现一些定制化需求：
+在 Ring-base 架构中没有额外存储参数的 parameter server 进程，而是使用 Nvidia NCCL2 communication library
+来对 gradient 进行 All-Reduce 操作，因为没有独立的 parameter server 进程来管理参数，所以训练过程中占用的带宽
+相比 parameter server 要少，吞吐更好。下面是 ring-base 和 parameter server 的一些特性对比：
 
-对比维度 |Ring-base All-Reduce | Parameter Server
+对比维度 |Ring-base | Parameter Server
 -- | -- | --
 实现复杂度 | 低| 高
-CPU 训练| 不支持 | 支持
 异步训练 | 不支持 | 支持
 容错训练 | 不支持 | 支持
-性能 | 好 | 相对低
+性能 | 好 | 相对低，需要对 RPC 性能做优化
 GDR | 支持 | 不支持
 
 ## 高性能并行训练技术
