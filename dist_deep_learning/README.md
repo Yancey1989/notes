@@ -82,7 +82,7 @@ master 重新
 
 ### 数据并行 VS. 模型并行
 
-<img src="images/parallelism.png" />
+<img src="images/parallelism.png" width="600" />
 
 并行训练主要分为两种模式：模型并行以及数据并行。
 
