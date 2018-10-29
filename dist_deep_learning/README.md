@@ -5,10 +5,10 @@
 信息信息技术的发展，人类可以采集到的数据越来越繁杂和精细，在人工智能公司的 AI 系统中需要处理的数据也越来越庞大，并且随
 着 AI 算法的不断演进，模型正变得越来越复杂，所需的计算能力也越来越高。这需要企业拥有一套功能强大的 AI 平台能够:
 1. 调度不同作业，按优先级由高到低可以分为：实时作业、离线作业以及实验作业。
-1. 对于深度学习类作业，不同的模型，需要的硬件也不一样，例如一些 CTR 类的模型由于模型比较简单但是需要处理的数据非常庞大
-    ，所以需要 大量的 CPU 来完成训练，图像类模型则需要大量 GPU 芯片来完成训练等等。为了支持多种 AI 计算芯片（CPU, 
-    GPU 以及 ARM等）以及不同的计算库（Nvidia CUDA，Intel MKLDNN 以及 cuBlas 等），训练框架需要能够在异构的集群完
-    成大规模的训练任务。
+1. 对于深度学习类的作业，不同的模型，对硬件的需求也不一样，例如一些 CTR 的模型, 其网络配置比较简单但是需要处理的数据
+    非常庞大，所以需要大量的 CPU 来处理 IO，图像类模型则需要大量 GPU 芯片来完成训练等等。为了支持多种 AI 计算芯片
+    （CPU, GPU 以及 ARM等）以及不同的计算库（Nvidia CUDA，Intel MKLDNN 以及 cuBlas 等），训练框架需要能够在
+    不同的 AI 计算芯片上完成大规模的训练任务。
 
 ## 通用计算机群 Kubernetes
 
@@ -41,6 +41,8 @@ Kubernetes 还提供很多的 Object，来管理计算作业类进程(Kubernetes
 而[Elastic Deep Learning(EDL)](http://github.com/PaddlePaddle/edl) 则允许用户在提交任务时指定一个资源范围，
 例如 1 ~ 10 个计算节点，此时任务将会以 5 个训练进程被立即调度起来。
 
+TODO: 生产环境机群和实验环境机群带来的好处
+
 ### Kubernetes TrainingJob Controller
 
 EDL 中实现了一个自定义的 Kubernetes Controller (TrainingJob Controller)，这样用户就可以通过一个 YAML 文件来
@@ -72,6 +74,10 @@ master 重新
 1. 特别的为了处理某个 trainer 在训练过程中失败，我们在 Pending Queue 中的 block 设定了一个 timeout threshold, 
 一旦有某个 block 超过了这个 threshold 就会被移动到 TODO queue 被重新训练。
 
+### Kubernetes TrainingJob Scheduler
+
+TBD
+
 ## 并行训练框架
 
 对于 AI 开发者来说，一个框架是否好用通常意味着：
@@ -80,6 +86,7 @@ master 重新
 - 是否能够稳定、高性能的支持大规模并行训练；
 - Operator 是否足够丰富以便能够配置出复杂的算法模型；
 - 是否可以支持多种 AI 计算芯片，例如 CPU、GPU以及ARM芯片等；
+- 是否支持高性能的 inference 等。
 
 其中是否能够稳定、高性能的支持大规模的并行训练是衡量一个框架是否工业可用的一个重要标准。
 
